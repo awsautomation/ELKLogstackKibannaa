@@ -1,0 +1,134 @@
+version: '3'
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.3.1
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - discovery.seed_hosts=elasticsearch2
+      - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3,elasticsearch4
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata01:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    networks:
+      - esnet
+  elasticsearch2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.3.1
+    container_name: elasticsearch2
+    environment:
+      - node.name=elasticsearch2
+      - discovery.seed_hosts=elasticsearch
+      - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3,elasticsearch4
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata02:/usr/share/elasticsearch/data
+    networks:
+      - esnet
+  elasticsearch3:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.3.1
+    container_name: elasticsearch3
+    environment:
+      - node.name=elasticsearch3
+      - discovery.seed_hosts=elasticsearch
+      - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3,elasticsearch4
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata03:/usr/share/elasticsearch/data
+    networks:
+      - esnet
+  elasticsearch4:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.3.1
+    container_name: elasticsearch4
+    environment:
+      - node.name=elasticsearch4
+      - discovery.seed_hosts=elasticsearch
+      - cluster.initial_master_nodes=elasticsearch,elasticsearch2,elasticsearch3,elasticsearch4
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata04:/usr/share/elasticsearch/data
+    networks:
+      - esnet
+
+  logstash:
+    image: 'docker.elastic.co/logstash/logstash:7.3.1'
+    container_name: logstash
+    environment:
+      - LOG_LEVEL=debug
+      - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro 
+    ports:
+      - '5044:5044'
+    depends_on:
+      - elasticsearch
+    networks:
+      - esnet
+  kibana:
+    image: 'docker.elastic.co/kibana/kibana:7.3.1'
+    container_name: kibana
+    environment:
+      SERVER_NAME: kibana.local
+    ports:
+      - '5601:5601'
+    networks:
+      - esnet
+    depends_on:
+      - elasticsearch
+
+  filebeat:
+    image: 'docker.elastic.co/beats/filebeat:7.3.1'
+    container_name: filebeat
+    user: root
+    networks:
+      - esnet
+    depends_on:
+      - logstash
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - /var/lib/docker/containers/:/var/lib/docker/containers/:ro
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch
+      - KIBANA_HOST=kibana
+
+volumes:
+  esdata01:
+    driver: local
+  esdata02:
+    driver: local
+  esdata03:
+    driver: local
+  esdata04:
+    driver: local
+
+networks:
+  esnet:
